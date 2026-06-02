@@ -6,16 +6,36 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             List {
-                NavigationLink(destination: APITestView()) {
-                    Label("APIテスト", systemImage: "network")
+                Section("エンゲージ") {
+                    NavigationLink(destination: BriefApprovalView()) {
+                        HStack {
+                            Label("承認管理", systemImage: "checkmark.seal")
+                            if !connectivity.briefs.isEmpty {
+                                Spacer()
+                                Text("\(connectivity.briefs.count)")
+                                    .font(.caption)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(Color.red)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(10)
+                            }
+                        }
+                    }
                 }
                 
-                NavigationLink(destination: QuickTestView()) {
-                    Label("クイックテスト", systemImage: "bolt.fill")
-                }
-                
-                NavigationLink(destination: ResultView()) {
-                    Label("結果表示", systemImage: "doc.text")
+                Section("APIテスト") {
+                    NavigationLink(destination: QuickTestView()) {
+                        Label("全API診断", systemImage: "bolt.fill")
+                    }
+                    
+                    NavigationLink(destination: APITestView()) {
+                        Label("個別テスト", systemImage: "network")
+                    }
+                    
+                    NavigationLink(destination: ResultView()) {
+                        Label("結果詳細", systemImage: "doc.text")
+                    }
                 }
                 
                 Section {
@@ -27,7 +47,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .navigationTitle("占いデバッグ")
+            .navigationTitle("デバッグ")
         }
     }
 }
