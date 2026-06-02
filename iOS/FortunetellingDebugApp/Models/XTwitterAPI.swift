@@ -99,8 +99,9 @@ class XTwitterAPI {
         let keyData = key.data(using: .utf8)!
         let messageData = message.data(using: .utf8)!
         
-        let hasher = HMAC<Insecure.SHA1>(key: SymmetricKey(data: keyData))
-        let mac = hasher.finalize(for: messageData)
+        var hasher = HMAC<Insecure.SHA1>(key: SymmetricKey(data: keyData))
+        hasher.update(data: messageData)
+        let mac = hasher.finalize()
         
         return Data(mac).base64EncodedString()
     }

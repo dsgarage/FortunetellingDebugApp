@@ -106,3 +106,4 @@ class WatchConnectivity: NSObject, ObservableObject, WCSessionDelegate {
             "briefAction": action
         ])
     }
+}
