@@ -97,4 +97,7 @@ iOSInjectionProject/
 *.xcworkspace
 
 # Config
-Config.xcconfigIMG_6050.heic
+Config.xcconfig
+
+# 写真・スクリーンショット
+*.heic
