@@ -19,96 +19,297 @@ struct APITestView: View {
     
     var body: some View {
         NavigationView {
-            Form {
-                Section("テスト設定") {
-                    Picker("占い種別", selection: $selectedFortuneType) {
-                        ForEach(FortuneType.allCases, id: \.self) { type in
-                            Text(type.rawValue).tag(type)
-                        }
-                    }
-                    
-                    if selectedFortuneType != .tarot {
-                        DatePicker("生年月日", selection: $birthDate, displayedComponents: .date)
-                    }
-                    
-                    if selectedFortuneType == .bloodType {
-                        Picker("血液型", selection: $bloodType) {
-                            ForEach(bloodTypes, id: \.self) { type in
-                                Text(type + "型").tag(type)
-                            }
-                        }
-                        .pickerStyle(SegmentedPickerStyle())
-                    }
-                }
+            ZStack {
+                // 背景グラデーション（サイバーマンデー風）
+                LinearGradient(
+                    gradient: Gradient(colors: [CyberTheme.blackPrimary, Color.black]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
                 
-                Section {
-                    Button(action: testAPI) {
-                        HStack {
-                            if isLoading {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle())
-                                    .scaleEffect(0.8)
-                            } else {
-                                Image(systemName: "play.circle.fill")
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // ヘッダー
+                        VStack(spacing: 8) {
+                            HStack(spacing: 12) {
+                                Rectangle()
+                                    .fill(CyberTheme.yellowAccent)
+                                    .frame(width: 4, height: 40)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("CYBER")
+                                        .font(.system(size: 14, weight: .black, design: .monospaced))
+                                        .foregroundColor(CyberTheme.yellowAccent)
+                                    Text("API TEST")
+                                        .font(.system(size: 24, weight: .black, design: .monospaced))
+                                        .foregroundColor(.white)
+                                }
+                                Spacer()
                             }
-                            Text("APIテスト実行")
+                            
+                            // 斜線パターン
+                            GeometryReader { geometry in
+                                Path { path in
+                                    let width = geometry.size.width
+                                    let height: CGFloat = 4
+                                    let stripeWidth: CGFloat = 8
+                                    
+                                    for i in stride(from: -height, to: width + height, by: stripeWidth * 2) {
+                                        path.move(to: CGPoint(x: i, y: 0))
+                                        path.addLine(to: CGPoint(x: i + stripeWidth, y: height))
+                                    }
+                                }
+                                .stroke(CyberTheme.yellowAccent.opacity(0.3), lineWidth: 2)
+                            }
+                            .frame(height: 4)
                         }
-                    }
-                    .disabled(isLoading)
-                    
-                    if let error = errorMessage {
-                        Text(error)
-                            .foregroundColor(.red)
-                            .font(.caption)
-                    }
-                }
-                
-                if let result = result {
-                    Section("実行結果") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Label(result.fortuneType, systemImage: "sparkles")
-                                .font(.headline)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                        
+                        // テスト設定セクション
+                        VStack(alignment: .leading, spacing: 16) {
+                            Label {
+                                Text("SERVICE")
+                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                    .foregroundColor(CyberTheme.blackPrimary)
+                            } icon: {
+                                EmptyView()
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(CyberTheme.yellowAccent)
+                            .cornerRadius(4)
                             
-                            Text("生年月日: \(result.birthDate)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            Text("実行時刻: \(result.calculatedAt)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            Divider()
-                            
-                            ForEach(Array(result.result.keys).sorted(), id: \.self) { key in
+                            VStack(spacing: 16) {
+                                // 占い種別選択
                                 HStack {
-                                    Text(key)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                    Text("占い種別")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.7))
                                     Spacer()
-                                    Text("\(result.result[key] ?? "")")
-                                        .font(.body)
+                                    Menu {
+                                        ForEach(FortuneType.allCases, id: \.self) { type in
+                                            Button(action: { selectedFortuneType = type }) {
+                                                Text(type.rawValue)
+                                            }
+                                        }
+                                    } label: {
+                                        HStack {
+                                            Text(selectedFortuneType.rawValue)
+                                                .font(.system(size: 14, weight: .bold))
+                                                .foregroundColor(CyberTheme.blackPrimary)
+                                            Image(systemName: "chevron.down")
+                                                .font(.system(size: 12))
+                                                .foregroundColor(CyberTheme.blackPrimary)
+                                        }
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 10)
+                                        .background(CyberTheme.limeGreen)
+                                        .cornerRadius(6)
+                                    }
+                                }
+                                
+                                // 生年月日
+                                if selectedFortuneType != .tarot {
+                                    HStack {
+                                        Text("生年月日")
+                                            .font(.system(size: 14, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.7))
+                                        Spacer()
+                                        DatePicker("", selection: $birthDate, displayedComponents: .date)
+                                            .datePickerStyle(CompactDatePickerStyle())
+                                            .accentColor(CyberTheme.yellowAccent)
+                                            .colorScheme(.dark)
+                                    }
+                                }
+                                
+                                // 血液型
+                                if selectedFortuneType == .bloodType {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("血液型")
+                                            .font(.system(size: 14, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.7))
+                                        HStack(spacing: 8) {
+                                            ForEach(bloodTypes, id: \.self) { type in
+                                                Button(action: { bloodType = type }) {
+                                                    Text(type + "型")
+                                                        .font(.system(size: 14, weight: .bold))
+                                                        .foregroundColor(bloodType == type ? CyberTheme.blackPrimary : .white)
+                                                        .frame(maxWidth: .infinity, minHeight: 40)
+                                                        .background(
+                                                            bloodType == type ? CyberTheme.yellowAccent : Color.clear
+                                                        )
+                                                        .overlay(
+                                                            RoundedRectangle(cornerRadius: 6)
+                                                                .stroke(CyberTheme.yellowAccent, lineWidth: 2)
+                                                        )
+                                                        .cornerRadius(6)
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
+                            .padding(20)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(CyberTheme.darkGray.opacity(0.5))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .strokeBorder(
+                                                style: StrokeStyle(lineWidth: 1, dash: [5, 3])
+                                            )
+                                            .foregroundColor(CyberTheme.yellowAccent.opacity(0.5))
+                                    )
+                            )
                         }
-                        .padding(.vertical, 4)
+                        .padding(.horizontal, 20)
+                        
+                        // 実行ボタン
+                        Button(action: testAPI) {
+                            HStack(spacing: 12) {
+                                if isLoading {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: CyberTheme.blackPrimary))
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Image(systemName: "bolt.fill")
+                                        .font(.system(size: 18))
+                                }
+                                Text("EXECUTE TEST")
+                                    .font(.system(size: 16, weight: .black, design: .monospaced))
+                                    .tracking(2)
+                            }
+                            .foregroundColor(CyberTheme.blackPrimary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                ZStack {
+                                    CyberTheme.yellowAccent
+                                    if !isLoading {
+                                        GeometryReader { geometry in
+                                            Path { path in
+                                                let width = geometry.size.width
+                                                let height = geometry.size.height
+                                                let stripeWidth: CGFloat = 10
+                                                
+                                                for i in stride(from: -height, to: width + height, by: stripeWidth * 2) {
+                                                    path.move(to: CGPoint(x: i, y: 0))
+                                                    path.addLine(to: CGPoint(x: i + height, y: height))
+                                                }
+                                            }
+                                            .stroke(CyberTheme.blackPrimary.opacity(0.1), lineWidth: 4)
+                                        }
+                                    }
+                                }
+                            )
+                            .cornerRadius(8)
+                        }
+                        .disabled(isLoading)
+                        .padding(.horizontal, 20)
+                        
+                        // エラー表示
+                        if let error = errorMessage {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.red)
+                                Text(error)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.red)
+                            }
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.red.opacity(0.1))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(Color.red.opacity(0.5), lineWidth: 1)
+                                    )
+                            )
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        // 実行結果
+                        if let result = result {
+                            VStack(alignment: .leading, spacing: 16) {
+                                HStack {
+                                    Rectangle()
+                                        .fill(CyberTheme.limeGreen)
+                                        .frame(width: 4, height: 20)
+                                    Text("RESULT")
+                                        .font(.system(size: 14, weight: .black, design: .monospaced))
+                                        .foregroundColor(CyberTheme.limeGreen)
+                                    Spacer()
+                                    Text(result.fortuneType)
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(CyberTheme.blackPrimary)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 4)
+                                        .background(CyberTheme.limeGreen)
+                                        .cornerRadius(4)
+                                }
+                                
+                                VStack(spacing: 12) {
+                                    HStack {
+                                        Text("生年月日")
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.5))
+                                        Spacer()
+                                        Text(result.birthDate)
+                                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                            .foregroundColor(CyberTheme.limeGreen)
+                                    }
+                                    
+                                    HStack {
+                                        Text("実行時刻")
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.5))
+                                        Spacer()
+                                        Text(result.calculatedAt)
+                                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                            .foregroundColor(CyberTheme.limeGreen)
+                                    }
+                                    
+                                    Rectangle()
+                                        .fill(CyberTheme.limeGreen.opacity(0.2))
+                                        .frame(height: 1)
+                                    
+                                    ForEach(Array(result.result.keys).sorted(), id: \.self) { key in
+                                        HStack {
+                                            Text(key)
+                                                .font(.system(size: 12, weight: .medium))
+                                                .foregroundColor(.white.opacity(0.7))
+                                            Spacer()
+                                            if let value = result.result[key] {
+                                                Text("\(value)")
+                                                    .font(.system(size: 14, weight: .bold))
+                                                    .foregroundColor(.white)
+                                            }
+                                        }
+                                        .padding(.vertical, 4)
+                                    }
+                                }
+                                .padding(16)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color.black.opacity(0.5))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(CyberTheme.limeGreen.opacity(0.5), lineWidth: 1)
+                                        )
+                                )
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        Spacer(minLength: 40)
                     }
+                    .padding(.bottom, 100)
                 }
             }
-            .navigationTitle("APIテスト")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showResult.toggle() }) {
-                        Image(systemName: "doc.text.magnifyingglass")
-                    }
-                    .disabled(result == nil)
-                }
-            }
+            .navigationBarHidden(true)
         }
-        .sheet(isPresented: $showResult) {
-            if let result = result {
-                ResultDetailView(result: result)
-            }
-        }
+        .preferredColorScheme(.dark)
     }
     
     private func testAPI() {
@@ -148,53 +349,6 @@ struct APITestView: View {
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription
                     self.isLoading = false
-                }
-            }
-        }
-    }
-}
-
-struct ResultDetailView: View {
-    let result: FortuneTellingResult
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(result.fortuneType)
-                        .font(.largeTitle)
-                        .bold()
-                    
-                    GroupBox("メタデータ") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Label(result.birthDate, systemImage: "calendar")
-                            Label(result.calculatedAt, systemImage: "clock")
-                        }
-                    }
-                    
-                    GroupBox("結果詳細") {
-                        VStack(alignment: .leading, spacing: 12) {
-                            ForEach(Array(result.result.keys).sorted(), id: \.self) { key in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(key)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Text("\(result.result[key] ?? "")")
-                                        .font(.body)
-                                }
-                                Divider()
-                            }
-                        }
-                    }
-                }
-                .padding()
-            }
-            .navigationTitle("詳細結果")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("閉じる") { dismiss() }
                 }
             }
         }

@@ -19,18 +19,15 @@ struct SettingsView: View {
                     }
                 }
                 
-                Section("X (Twitter) API認証") {
-                    SecureField("API Key", text: $settings.xAPIKey)
+                Section("exia-api (Briefs)") {
+                    TextField("exia-api URL", text: $settings.exiaAPIURL)
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                     
-                    SecureField("API Secret", text: $settings.xAPISecret)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                    
-                    SecureField("Access Token", text: $settings.xAccessToken)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                    
-                    SecureField("Access Token Secret", text: $settings.xAccessTokenSecret)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                    Text("Tailscale経由: 100.94.130.83:8000")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
                 
                 Section("デバッグ情報") {
@@ -103,10 +100,7 @@ struct SettingsView: View {
     
     private func resetSettings() {
         settings.fortuneTellingServerURL = "http://localhost:3000"
-        settings.xAPIKey = ""
-        settings.xAPISecret = ""
-        settings.xAccessToken = ""
-        settings.xAccessTokenSecret = ""
+        settings.exiaAPIURL = "http://100.94.130.83:8000"
         alertMessage = "設定をリセットしました"
         showingAlert = true
     }

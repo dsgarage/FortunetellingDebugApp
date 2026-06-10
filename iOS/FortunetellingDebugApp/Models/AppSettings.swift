@@ -8,6 +8,12 @@ class AppSettings: ObservableObject {
         }
     }
     
+    @Published var exiaAPIURL: String {
+        didSet {
+            UserDefaults.standard.set(exiaAPIURL, forKey: "exiaAPIURL")
+        }
+    }
+    
     @Published var xAPIKey: String {
         didSet {
             UserDefaults.standard.set(xAPIKey, forKey: "xAPIKey")
@@ -34,6 +40,8 @@ class AppSettings: ObservableObject {
     
     init() {
         self.fortuneTellingServerURL = UserDefaults.standard.string(forKey: "fortuneTellingServerURL") ?? "http://localhost:3000"
+        // exia-apiのデフォルトURL（Tailscale経由でアクセス）
+        self.exiaAPIURL = UserDefaults.standard.string(forKey: "exiaAPIURL") ?? "http://100.94.130.83:8000"
         self.xAPIKey = UserDefaults.standard.string(forKey: "xAPIKey") ?? ""
         self.xAPISecret = UserDefaults.standard.string(forKey: "xAPISecret") ?? ""
         self.xAccessToken = UserDefaults.standard.string(forKey: "xAccessToken") ?? ""
