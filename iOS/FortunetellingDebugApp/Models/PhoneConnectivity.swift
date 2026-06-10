@@ -3,15 +3,37 @@ import WatchConnectivity
 
 class PhoneConnectivity: NSObject, ObservableObject, WCSessionDelegate {
     @Published var isReachable = false
-    private let apiClient: FortuneTellingAPI
-    
+
     override init() {
-        self.apiClient = FortuneTellingAPI(baseURL: UserDefaults.standard.string(forKey: "fortuneTellingServerURL") ?? "http://localhost:3000")
         super.init()
-        
+
         if WCSession.isSupported() {
             WCSession.default.delegate = self
             WCSession.default.activate()
+        }
+    }
+
+    /// 現在の設定（URL + 保存済みトークン）でクライアントを生成する。
+    private func makeClient() -> FortuneTellingAPI {
+        let url = UserDefaults.standard.string(forKey: "fortuneTellingServerURL") ?? kDefaultFortuneServerURL
+        let token = UserDefaults.standard.string(forKey: "accessToken") ?? ""
+        return FortuneTellingAPI(baseURL: url, accessToken: token)
+    }
+
+    /// Watch のクイックテスト種別を実エンドポイントへマッピングする。
+    private func endpoint(for type: String, birthDate: String) -> (method: String, path: String, auth: Bool, body: [String: Any]?) {
+        switch type {
+        case "fourPillars":
+            return ("GET", "/api/v1/fortune/bazi/meishiki", true, nil)
+        case "westernAstrology":
+            return ("GET", "/api/v1/fortune/horoscope", true, nil)
+        case "rokusei":
+            return ("POST", "/api/v1/fortune/rokusei/diagnose", true, ["birthdate": birthDate, "gender": "male"])
+        case "numerology", "tarot", "nineStarKi", "bloodType":
+            // 個別エンドポイントは無く、日運に統合されている
+            return ("GET", "/api/v1/fortune/daily", true, nil)
+        default:
+            return ("GET", "/api/health", false, nil)
         }
     }
     
@@ -53,55 +75,28 @@ class PhoneConnectivity: NSObject, ObservableObject, WCSessionDelegate {
         guard let type = message["type"] as? String else { return }
         let birthDate = message["birthDate"] as? String ?? "1990-01-01"
         let startTime = Date()
-        
+
         Task {
-            do {
-                var result: [String: Any] = ["action": "testResult"]
-                
-                switch type {
-                case "fourPillars":
-                    let data = try await apiClient.testFourPillars(birthDate: birthDate)
-                    result["success"] = true
-                    result["message"] = data.fortuneType
-                case "westernAstrology":
-                    let data = try await apiClient.testWesternAstrology(birthDate: birthDate)
-                    result["success"] = true
-                    result["message"] = data.fortuneType
-                case "numerology":
-                    let data = try await apiClient.testNumerology(birthDate: birthDate)
-                    result["success"] = true
-                    result["message"] = data.fortuneType
-                case "tarot":
-                    let data = try await apiClient.testTarot()
-                    result["success"] = true
-                    result["message"] = data.fortuneType
-                case "nineStarKi":
-                    let data = try await apiClient.testNineStarKi(birthDate: birthDate)
-                    result["success"] = true
-                    result["message"] = data.fortuneType
-                case "bloodType":
-                    let data = try await apiClient.testBloodType(bloodType: "A")
-                    result["success"] = true
-                    result["message"] = data.fortuneType
-                case "rokusei":
-                    let data = try await apiClient.testRokusei(birthDate: birthDate)
-                    result["success"] = true
-                    result["message"] = data.fortuneType
-                default:
-                    result["success"] = false
-                    result["message"] = "Unknown type"
-                }
-                
-                result["responseTime"] = Date().timeIntervalSince(startTime)
-                WCSession.default.sendMessage(result, replyHandler: nil)
-            } catch {
-                WCSession.default.sendMessage([
-                    "action": "testResult",
-                    "success": false,
-                    "message": error.localizedDescription,
-                    "responseTime": Date().timeIntervalSince(startTime)
-                ], replyHandler: nil)
+            let ep = endpoint(for: type, birthDate: birthDate)
+            let resp = await makeClient().call(
+                method: ep.method, path: ep.path, body: ep.body, auth: ep.auth
+            )
+
+            var message: String
+            if resp.ok {
+                message = "HTTP \(resp.statusCode) OK"
+            } else if ep.auth && resp.statusCode == 401 {
+                message = "HTTP 401 未ログイン（iPhone 側でログインしてください）"
+            } else {
+                message = "HTTP \(resp.statusCode)"
             }
+
+            WCSession.default.sendMessage([
+                "action": "testResult",
+                "success": resp.ok,
+                "message": message,
+                "responseTime": Date().timeIntervalSince(startTime),
+            ], replyHandler: nil)
         }
     }
     

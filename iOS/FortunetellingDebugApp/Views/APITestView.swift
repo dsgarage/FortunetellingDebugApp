@@ -2,308 +2,45 @@ import SwiftUI
 
 struct APITestView: View {
     @EnvironmentObject var settings: AppSettings
+
+    @State private var password = ""
     @State private var birthDate = Date()
-    @State private var bloodType = "A"
-    @State private var selectedFortuneType = FortuneType.fourPillars
+    @State private var selectedIndex = 0
     @State private var isLoading = false
-    @State private var result: FortuneTellingResult?
+    @State private var statusCode: Int?
+    @State private var responseBody = ""
     @State private var errorMessage: String?
-    @State private var showResult = false
-    
-    private let bloodTypes = ["A", "B", "O", "AB"]
+
     private let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f
     }()
-    
+
+    private var endpoints: [FortuneEndpoint] { FortuneCatalog.endpoints }
+    private var selected: FortuneEndpoint { endpoints[selectedIndex] }
+
     var body: some View {
         NavigationView {
             ZStack {
-                // 背景グラデーション（サイバーマンデー風）
                 LinearGradient(
                     gradient: Gradient(colors: [CyberTheme.blackPrimary, Color.black]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    startPoint: .topLeading, endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea()
-                
+
                 ScrollView {
-                    VStack(spacing: 24) {
-                        // ヘッダー
-                        VStack(spacing: 8) {
-                            HStack(spacing: 12) {
-                                Rectangle()
-                                    .fill(CyberTheme.yellowAccent)
-                                    .frame(width: 4, height: 40)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("CYBER")
-                                        .font(.system(size: 14, weight: .black, design: .monospaced))
-                                        .foregroundColor(CyberTheme.yellowAccent)
-                                    Text("API TEST")
-                                        .font(.system(size: 24, weight: .black, design: .monospaced))
-                                        .foregroundColor(.white)
-                                }
-                                Spacer()
-                            }
-                            
-                            // 斜線パターン
-                            GeometryReader { geometry in
-                                Path { path in
-                                    let width = geometry.size.width
-                                    let height: CGFloat = 4
-                                    let stripeWidth: CGFloat = 8
-                                    
-                                    for i in stride(from: -height, to: width + height, by: stripeWidth * 2) {
-                                        path.move(to: CGPoint(x: i, y: 0))
-                                        path.addLine(to: CGPoint(x: i + stripeWidth, y: height))
-                                    }
-                                }
-                                .stroke(CyberTheme.yellowAccent.opacity(0.3), lineWidth: 2)
-                            }
-                            .frame(height: 4)
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 20)
-                        
-                        // テスト設定セクション
-                        VStack(alignment: .leading, spacing: 16) {
-                            Label {
-                                Text("SERVICE")
-                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                    .foregroundColor(CyberTheme.blackPrimary)
-                            } icon: {
-                                EmptyView()
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(CyberTheme.yellowAccent)
-                            .cornerRadius(4)
-                            
-                            VStack(spacing: 16) {
-                                // 占い種別選択
-                                HStack {
-                                    Text("占い種別")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.white.opacity(0.7))
-                                    Spacer()
-                                    Menu {
-                                        ForEach(FortuneType.allCases, id: \.self) { type in
-                                            Button(action: { selectedFortuneType = type }) {
-                                                Text(type.rawValue)
-                                            }
-                                        }
-                                    } label: {
-                                        HStack {
-                                            Text(selectedFortuneType.rawValue)
-                                                .font(.system(size: 14, weight: .bold))
-                                                .foregroundColor(CyberTheme.blackPrimary)
-                                            Image(systemName: "chevron.down")
-                                                .font(.system(size: 12))
-                                                .foregroundColor(CyberTheme.blackPrimary)
-                                        }
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 10)
-                                        .background(CyberTheme.limeGreen)
-                                        .cornerRadius(6)
-                                    }
-                                }
-                                
-                                // 生年月日
-                                if selectedFortuneType != .tarot {
-                                    HStack {
-                                        Text("生年月日")
-                                            .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(.white.opacity(0.7))
-                                        Spacer()
-                                        DatePicker("", selection: $birthDate, displayedComponents: .date)
-                                            .datePickerStyle(CompactDatePickerStyle())
-                                            .accentColor(CyberTheme.yellowAccent)
-                                            .colorScheme(.dark)
-                                    }
-                                }
-                                
-                                // 血液型
-                                if selectedFortuneType == .bloodType {
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text("血液型")
-                                            .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(.white.opacity(0.7))
-                                        HStack(spacing: 8) {
-                                            ForEach(bloodTypes, id: \.self) { type in
-                                                Button(action: { bloodType = type }) {
-                                                    Text(type + "型")
-                                                        .font(.system(size: 14, weight: .bold))
-                                                        .foregroundColor(bloodType == type ? CyberTheme.blackPrimary : .white)
-                                                        .frame(maxWidth: .infinity, minHeight: 40)
-                                                        .background(
-                                                            bloodType == type ? CyberTheme.yellowAccent : Color.clear
-                                                        )
-                                                        .overlay(
-                                                            RoundedRectangle(cornerRadius: 6)
-                                                                .stroke(CyberTheme.yellowAccent, lineWidth: 2)
-                                                        )
-                                                        .cornerRadius(6)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            .padding(20)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(CyberTheme.darkGray.opacity(0.5))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .strokeBorder(
-                                                style: StrokeStyle(lineWidth: 1, dash: [5, 3])
-                                            )
-                                            .foregroundColor(CyberTheme.yellowAccent.opacity(0.5))
-                                    )
-                            )
-                        }
-                        .padding(.horizontal, 20)
-                        
-                        // 実行ボタン
-                        Button(action: testAPI) {
-                            HStack(spacing: 12) {
-                                if isLoading {
-                                    ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: CyberTheme.blackPrimary))
-                                        .scaleEffect(0.8)
-                                } else {
-                                    Image(systemName: "bolt.fill")
-                                        .font(.system(size: 18))
-                                }
-                                Text("EXECUTE TEST")
-                                    .font(.system(size: 16, weight: .black, design: .monospaced))
-                                    .tracking(2)
-                            }
-                            .foregroundColor(CyberTheme.blackPrimary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(
-                                ZStack {
-                                    CyberTheme.yellowAccent
-                                    if !isLoading {
-                                        GeometryReader { geometry in
-                                            Path { path in
-                                                let width = geometry.size.width
-                                                let height = geometry.size.height
-                                                let stripeWidth: CGFloat = 10
-                                                
-                                                for i in stride(from: -height, to: width + height, by: stripeWidth * 2) {
-                                                    path.move(to: CGPoint(x: i, y: 0))
-                                                    path.addLine(to: CGPoint(x: i + height, y: height))
-                                                }
-                                            }
-                                            .stroke(CyberTheme.blackPrimary.opacity(0.1), lineWidth: 4)
-                                        }
-                                    }
-                                }
-                            )
-                            .cornerRadius(8)
-                        }
-                        .disabled(isLoading)
-                        .padding(.horizontal, 20)
-                        
-                        // エラー表示
-                        if let error = errorMessage {
-                            HStack {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.red)
-                                Text(error)
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(.red)
-                            }
-                            .padding(12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color.red.opacity(0.1))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(Color.red.opacity(0.5), lineWidth: 1)
-                                    )
-                            )
-                            .padding(.horizontal, 20)
-                        }
-                        
-                        // 実行結果
-                        if let result = result {
-                            VStack(alignment: .leading, spacing: 16) {
-                                HStack {
-                                    Rectangle()
-                                        .fill(CyberTheme.limeGreen)
-                                        .frame(width: 4, height: 20)
-                                    Text("RESULT")
-                                        .font(.system(size: 14, weight: .black, design: .monospaced))
-                                        .foregroundColor(CyberTheme.limeGreen)
-                                    Spacer()
-                                    Text(result.fortuneType)
-                                        .font(.system(size: 12, weight: .bold))
-                                        .foregroundColor(CyberTheme.blackPrimary)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 4)
-                                        .background(CyberTheme.limeGreen)
-                                        .cornerRadius(4)
-                                }
-                                
-                                VStack(spacing: 12) {
-                                    HStack {
-                                        Text("生年月日")
-                                            .font(.system(size: 12, weight: .medium))
-                                            .foregroundColor(.white.opacity(0.5))
-                                        Spacer()
-                                        Text(result.birthDate)
-                                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                            .foregroundColor(CyberTheme.limeGreen)
-                                    }
-                                    
-                                    HStack {
-                                        Text("実行時刻")
-                                            .font(.system(size: 12, weight: .medium))
-                                            .foregroundColor(.white.opacity(0.5))
-                                        Spacer()
-                                        Text(result.calculatedAt)
-                                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                            .foregroundColor(CyberTheme.limeGreen)
-                                    }
-                                    
-                                    Rectangle()
-                                        .fill(CyberTheme.limeGreen.opacity(0.2))
-                                        .frame(height: 1)
-                                    
-                                    ForEach(Array(result.result.keys).sorted(), id: \.self) { key in
-                                        HStack {
-                                            Text(key)
-                                                .font(.system(size: 12, weight: .medium))
-                                                .foregroundColor(.white.opacity(0.7))
-                                            Spacer()
-                                            if let value = result.result[key] {
-                                                Text("\(value)")
-                                                    .font(.system(size: 14, weight: .bold))
-                                                    .foregroundColor(.white)
-                                            }
-                                        }
-                                        .padding(.vertical, 4)
-                                    }
-                                }
-                                .padding(16)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(Color.black.opacity(0.5))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .stroke(CyberTheme.limeGreen.opacity(0.5), lineWidth: 1)
-                                        )
-                                )
-                            }
-                            .padding(.horizontal, 20)
-                        }
-                        
+                    VStack(spacing: 20) {
+                        header
+                        authSection
+                        endpointSection
+                        executeButton
+                        if let error = errorMessage { errorView(error) }
+                        if statusCode != nil { resultView }
                         Spacer(minLength: 40)
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
                     .padding(.bottom, 100)
                 }
             }
@@ -311,45 +48,246 @@ struct APITestView: View {
         }
         .preferredColorScheme(.dark)
     }
-    
-    private func testAPI() {
+
+    // MARK: - Header
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            Rectangle().fill(CyberTheme.yellowAccent).frame(width: 4, height: 40)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("CYBER")
+                    .font(.system(size: 14, weight: .black, design: .monospaced))
+                    .foregroundColor(CyberTheme.yellowAccent)
+                Text("API TEST")
+                    .font(.system(size: 24, weight: .black, design: .monospaced))
+                    .foregroundColor(.white)
+            }
+            Spacer()
+        }
+    }
+
+    // MARK: - 認証
+
+    private var authSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel("AUTH")
+            if settings.isLoggedIn {
+                HStack {
+                    Image(systemName: "checkmark.seal.fill").foregroundColor(CyberTheme.limeGreen)
+                    Text("ログイン済み: \(settings.authEmail)")
+                        .font(.system(size: 13, weight: .medium)).foregroundColor(.white)
+                    Spacer()
+                    Button("ログアウト") { settings.clearAuth() }
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.red)
+                }
+            } else {
+                TextField("email", text: $settings.authEmail)
+                    .keyboardType(.emailAddress)
+                    .autocapitalization(.none)
+                    .disableAutocorrection(true)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                SecureField("password", text: $password)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                Button(action: login) {
+                    Text("ログイン")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(CyberTheme.blackPrimary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(CyberTheme.limeGreen)
+                        .cornerRadius(6)
+                }
+            }
+        }
+        .padding(16)
+        .background(cardBackground)
+    }
+
+    // MARK: - エンドポイント
+
+    private var endpointSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel("ENDPOINT")
+            Menu {
+                ForEach(endpoints) { ep in
+                    Button(action: { selectedIndex = ep.id }) {
+                        Text("\(ep.method) \(ep.label)")
+                    }
+                }
+            } label: {
+                HStack {
+                    Text("\(selected.method) \(selected.label)")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(CyberTheme.blackPrimary)
+                        .lineLimit(1)
+                    Spacer()
+                    if selected.requiresAuth {
+                        Image(systemName: "lock.fill").font(.system(size: 11))
+                            .foregroundColor(CyberTheme.blackPrimary)
+                    }
+                    Image(systemName: "chevron.down").font(.system(size: 12))
+                        .foregroundColor(CyberTheme.blackPrimary)
+                }
+                .padding(.horizontal, 16).padding(.vertical, 10)
+                .background(CyberTheme.yellowAccent).cornerRadius(6)
+            }
+
+            Text(selected.path)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(.white.opacity(0.5))
+
+            HStack {
+                Text("生年月日 (date/body 用)")
+                    .font(.system(size: 13)).foregroundColor(.white.opacity(0.7))
+                Spacer()
+                DatePicker("", selection: $birthDate, displayedComponents: .date)
+                    .datePickerStyle(CompactDatePickerStyle())
+                    .accentColor(CyberTheme.yellowAccent)
+                    .colorScheme(.dark)
+            }
+        }
+        .padding(16)
+        .background(cardBackground)
+    }
+
+    private var executeButton: some View {
+        Button(action: execute) {
+            HStack(spacing: 12) {
+                if isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: CyberTheme.blackPrimary))
+                        .scaleEffect(0.8)
+                } else {
+                    Image(systemName: "bolt.fill").font(.system(size: 18))
+                }
+                Text("EXECUTE")
+                    .font(.system(size: 16, weight: .black, design: .monospaced)).tracking(2)
+            }
+            .foregroundColor(CyberTheme.blackPrimary)
+            .frame(maxWidth: .infinity).padding(.vertical, 16)
+            .background(CyberTheme.yellowAccent).cornerRadius(8)
+        }
+        .disabled(isLoading)
+    }
+
+    private func errorView(_ error: String) -> some View {
+        HStack(alignment: .top) {
+            Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.red)
+            Text(error).font(.system(size: 12, weight: .medium)).foregroundColor(.red)
+        }
+        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 6).fill(Color.red.opacity(0.1))
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.red.opacity(0.5), lineWidth: 1))
+        )
+    }
+
+    private var resultView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Rectangle().fill(statusColor).frame(width: 4, height: 20)
+                Text("RESULT")
+                    .font(.system(size: 14, weight: .black, design: .monospaced))
+                    .foregroundColor(statusColor)
+                Spacer()
+                Text("HTTP \(statusCode ?? -1)")
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundColor(CyberTheme.blackPrimary)
+                    .padding(.horizontal, 12).padding(.vertical, 4)
+                    .background(statusColor).cornerRadius(4)
+            }
+            ScrollView(.horizontal, showsIndicators: true) {
+                Text(responseBody)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.white)
+                    .textSelection(.enabled)
+                    .padding(12)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.6))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(statusColor.opacity(0.4), lineWidth: 1))
+            )
+        }
+    }
+
+    private var statusColor: Color {
+        guard let code = statusCode else { return CyberTheme.yellowAccent }
+        return (200..<300).contains(code) ? CyberTheme.limeGreen : .red
+    }
+
+    // MARK: - パーツ
+
+    private func sectionLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 12, weight: .bold, design: .monospaced))
+            .foregroundColor(CyberTheme.blackPrimary)
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            .background(CyberTheme.yellowAccent).cornerRadius(4)
+    }
+
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 8)
+            .fill(CyberTheme.darkGray.opacity(0.5))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [5, 3]))
+                    .foregroundColor(CyberTheme.yellowAccent.opacity(0.5))
+            )
+    }
+
+    // MARK: - アクション
+
+    private func login() {
         isLoading = true
         errorMessage = nil
-        result = nil
-        
         let api = FortuneTellingAPI(baseURL: settings.fortuneTellingServerURL)
-        let birthDateString = dateFormatter.string(from: birthDate)
-        
+        let email = settings.authEmail
+        let pw = password
         Task {
             do {
-                let testResult: FortuneTellingResult
-                
-                switch selectedFortuneType {
-                case .fourPillars:
-                    testResult = try await api.testFourPillars(birthDate: birthDateString)
-                case .westernAstrology:
-                    testResult = try await api.testWesternAstrology(birthDate: birthDateString)
-                case .numerology:
-                    testResult = try await api.testNumerology(birthDate: birthDateString)
-                case .tarot:
-                    testResult = try await api.testTarot()
-                case .nineStarKi:
-                    testResult = try await api.testNineStarKi(birthDate: birthDateString)
-                case .bloodType:
-                    testResult = try await api.testBloodType(bloodType: bloodType)
-                case .rokusei:
-                    testResult = try await api.testRokusei(birthDate: birthDateString)
-                }
-                
+                let tokens = try await api.login(email: email, password: pw)
                 await MainActor.run {
-                    self.result = testResult
-                    self.isLoading = false
+                    settings.accessToken = tokens.accessToken
+                    settings.refreshToken = tokens.refreshToken
+                    password = ""
+                    isLoading = false
                 }
             } catch {
                 await MainActor.run {
-                    self.errorMessage = error.localizedDescription
-                    self.isLoading = false
+                    errorMessage = error.localizedDescription
+                    isLoading = false
                 }
+            }
+        }
+    }
+
+    private func execute() {
+        isLoading = true
+        errorMessage = nil
+        statusCode = nil
+        responseBody = ""
+
+        let api = FortuneTellingAPI(
+            baseURL: settings.fortuneTellingServerURL,
+            accessToken: settings.accessToken
+        )
+        let ep = selected
+        let dateStr = dateFormatter.string(from: birthDate)
+
+        if ep.requiresAuth && !settings.isLoggedIn {
+            errorMessage = "このエンドポイントは認証が必要です。先にログインしてください。"
+            isLoading = false
+            return
+        }
+
+        Task {
+            let resp = await api.execute(ep, birthdate: dateStr)
+            await MainActor.run {
+                statusCode = resp.statusCode
+                responseBody = resp.body
+                isLoading = false
             }
         }
     }

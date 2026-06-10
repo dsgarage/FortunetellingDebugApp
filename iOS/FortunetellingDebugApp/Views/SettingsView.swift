@@ -70,7 +70,7 @@ struct SettingsView: View {
     }
     
     private func testConnection() {
-        guard let url = URL(string: settings.fortuneTellingServerURL + "/health") else {
+        guard let url = URL(string: settings.fortuneTellingServerURL + "/api/health") else {
             alertMessage = "無効なURL"
             showingAlert = true
             return
@@ -99,8 +99,9 @@ struct SettingsView: View {
     }
     
     private func resetSettings() {
-        settings.fortuneTellingServerURL = "http://localhost:3000"
-        settings.exiaAPIURL = "http://100.94.130.83:8000"
+        settings.fortuneTellingServerURL = kDefaultFortuneServerURL
+        settings.exiaAPIURL = kDefaultExiaAPIURL
+        settings.clearAuth()
         alertMessage = "設定をリセットしました"
         showingAlert = true
     }
